@@ -19,8 +19,8 @@ func initDatabase() {
 	checkError(err)
 }
 
-func getDbTodos(sqlQuery string) ([]todo.TodoModel, error) {
-	rows, err := db.Query(sqlQuery)
+func getDbTodos() ([]todo.TodoModel, error) {
+	rows, err := db.Query("SELECT * FROM todos")
 	checkError(err)
 	defer func() {
 		checkError(rows.Close())
@@ -47,4 +47,44 @@ func fillModel(modelAddresses reflect.Value, rows *sql.Rows) {
 	}
 
 	checkError(rows.Scan(columnsAddresses...))
+}
+
+func createDbTodo(dto todo.TodoDto) error {
+	sqlQuery := "INSERT INTO todos VALUES (gen_random_uuid (), " + "'" + dto.Title + "'" + ", false, NOW());"
+	return executreDbQuery(sqlQuery)
+}
+
+func deleteDbTodo(id string) error {
+	sqlQuery := "DELETE FROM todos WHERE ID = " + "'" + id + "'" + ";"
+	return executreDbQuery(sqlQuery)
+}
+
+func updateDbTodo(dto todo.TodoDto) error {
+	sqlQuery := "UPDATE todos SET Title = " +
+		"'" + dto.Title + "'" +
+		", Completed = " +
+		toString(dto.Completed) +
+		" WHERE ID = " +
+		"'" + dto.ID + "'" + ";"
+	print(sqlQuery)
+	return executreDbQuery(sqlQuery)
+}
+
+func executreDbQuery(sqlQuery string) error {
+	_, err := db.Exec(sqlQuery)
+	checkError(err)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func toString(bool bool) string {
+	if bool {
+		return "true"
+	} else {
+		return "false"
+	}
 }

@@ -1,14 +1,13 @@
 package todo
 
-func MapTodoListModelToDto(todoModels []TodoModel) []TodoDto {
-	todoList := []TodoDto{}
-	for _, td := range todoModels {
-		todoList = append(todoList, TodoDto{
-			Title:     td.Title,
-			ID:        td.ID,
-			CreatedAt: td.CreatedAt,
-			Completed: td.Completed,
-		})
+func MapTodoListModelToDto(models []TodoModel) []TodoDto {
+	dtoList := []TodoDto{}
+	for _, dto := range models {
+		dtoList = append(dtoList, MapTodoModelToDto(dto))
 	}
-	return todoList
+	return dtoList
+}
+
+func MapTodoModelToDto(model TodoModel) TodoDto {
+	return TodoDto{model.ID, model.Title, model.Completed, model.CreatedAt}
 }
