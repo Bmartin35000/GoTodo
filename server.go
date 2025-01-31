@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Bmartin35000/backend-project/todo"
+	"github.com/go-chi/cors"
 	"log"
 	"net/http"
 	"os"
@@ -21,6 +22,14 @@ var rnd *renderer.Render
 
 func main() {
 	router := chi.NewRouter()
+	router.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"https://*", "http://*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: false,
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
+	}))
 	router.Use(middleware.Logger)
 	router.Mount("/", todoHandlers())
 
