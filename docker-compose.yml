@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgres:latest
+    restart: always
+    environment: #creating default admin user
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '55555:5432'
+    volumes:
+      - ./database/createTables.sql:/docker-entrypoint-initdb.d/create_tables.sql #moving custom sql to postgres init directory
+  todoApp:
+    container_name: go-server-todo
+    restart: always
+    image: bamartin35/go-server-todo:1.0
+    depends_on: #define starting order
+      - db
+    ports:
+      - 8080:80
+    environment:
+      db_address: host.docker.internal
+      db_port: 55555
+      db_name: postgres

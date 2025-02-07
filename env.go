@@ -5,11 +5,17 @@ import (
 )
 
 func init() {
-	os.Setenv("server.port", "8080")
-	os.Setenv("db.user", "postgres")
-	os.Setenv("db.password", "postgres")
-	os.Setenv("db.address", "localhost")
-	os.Setenv("db.port", "55555")
-	os.Setenv("db.name", "todos")
+	setEnvVariableIfNotExist("server.port", "80")
+	setEnvVariableIfNotExist("db_user", "postgres")
+	setEnvVariableIfNotExist("db_password", "postgres")
+	setEnvVariableIfNotExist("db_address", "localhost")
+	setEnvVariableIfNotExist("db_port", "55555")
+	setEnvVariableIfNotExist("db_name", "postgres")
 	initDatabase() // force init orders due to strong connection
+}
+
+func setEnvVariableIfNotExist(key string, value string) {
+	if os.Getenv(key) == "" {
+		os.Setenv(key, value)
+	}
 }

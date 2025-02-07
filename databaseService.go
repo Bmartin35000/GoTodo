@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/Bmartin35000/backend-project/todo"
 	"os"
 	"reflect"
@@ -10,8 +11,9 @@ import (
 var db *sql.DB
 
 func initDatabase() {
-	connStr := "postgresql://" + os.Getenv("db.user") + ":" + os.Getenv("db.password") + "@" + os.Getenv("db.address") + ":" +
-		os.Getenv("db.port") + "/" + os.Getenv("db.name") + "?sslmode=disable"
+	connStr := "postgresql://" + os.Getenv("db_user") + ":" + os.Getenv("db_password") + "@" + os.Getenv("db_address") + ":" +
+		os.Getenv("db_port") + "/" + os.Getenv("db_name") + "?sslmode=disable"
+	fmt.Println("Connecting to db : ", connStr)
 
 	var err error
 	// Connect to database
