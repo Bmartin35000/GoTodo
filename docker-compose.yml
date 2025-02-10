@@ -9,7 +9,7 @@ services:
       - '55555:5432'
     volumes:
       - ./database/createTables.sql:/docker-entrypoint-initdb.d/create_tables.sql #moving custom sql to postgres init directory
-  todoApp:
+  todoAppBackEnd:
     container_name: go-server-todo
     restart: always
     image: bamartin35/go-server-todo:1.0
@@ -21,3 +21,12 @@ services:
       db_address: host.docker.internal
       db_port: 55555
       db_name: postgres
+  todoAppFrontEnd:
+    container_name: vue-todo
+    restart: always
+    image: bamartin35/vue-todo:1.0
+    depends_on: #define starting order
+      - db
+      - todoAppBackEnd
+    ports:
+      - 8081:8080

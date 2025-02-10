@@ -14,7 +14,7 @@ postgres connection : https://blog.logrocket.com/building-simple-app-go-postgres
 docker build -t bamartin35/go-server-todo:1.0 .
 
 ## Run the back-end container
-docker run bamartin35/go-server-todo:1.0 -p 8080:80
+docker run -p 8080:80 bamartin35/go-server-todo:1.0
 
 ## Run the whole application
 docker compose up
@@ -27,5 +27,5 @@ username: postgres
 password: postgres
 
 ## Accessing the APIs
-address: host.docker.internal/8080
+address: host.docker.internal:8080
 
