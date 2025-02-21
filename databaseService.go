@@ -1,92 +1,63 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"github.com/Bmartin35000/backend-project/todo"
+	"github.com/google/uuid"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 	"os"
-	"reflect"
 )
 
-var db *sql.DB
+var db *gorm.DB
 
 func initDatabase() {
-	connStr := "postgresql://" + os.Getenv("db_user") + ":" + os.Getenv("db_password") + "@" + os.Getenv("db_address") + ":" +
-		os.Getenv("db_port") + "/" + os.Getenv("db_name") + "?sslmode=disable"
-	fmt.Println("Connecting to db : ", connStr)
+	dataSourceName := "host=" + os.Getenv("db_address") + " user=" + os.Getenv("db_user") + " password=" + os.Getenv("db_password") +
+		" dbname=" + os.Getenv("db_name") + " port=" + os.Getenv("db_port") + " sslmode=disable"
+	fmt.Println("Connecting to db : ", dataSourceName)
 
 	var err error
 	// Connect to database
-	db, err = sql.Open("postgres", connStr)
-	checkError(err)
+	db, err = gorm.Open(postgres.Open(dataSourceName), &gorm.Config{})
+	if err != nil {
+		panic("failed to connect database")
+	}
+
+	// Update the db table
+	db.AutoMigrate(&todo.TodoModel{})
 }
 
 func getDbTodos() ([]todo.TodoModel, error) {
-	rows, err := db.Query("SELECT * FROM todos")
-	checkError(err)
-	defer func() {
-		checkError(rows.Close())
-	}()
-	var todoModels []todo.TodoModel
-	for rows.Next() {
-		var todoModel todo.TodoModel
-		modelAddresses := reflect.ValueOf(&todoModel).Elem()
-		fillModel(modelAddresses, rows)
-		todoModels = append(todoModels, todoModel)
-	}
+	var todos []todo.TodoModel
+	db.Find(&todos)
+	checkError(db.Error)
+	fmt.Println("len todos : ", len(todos))
 
-	if err != nil {
-		return nil, err
-	}
-
-	return todoModels, nil
-}
-
-func fillModel(modelAddresses reflect.Value, rows *sql.Rows) {
-	columnsAddresses := make([]interface{}, modelAddresses.NumField())
-	for i := 0; i < modelAddresses.NumField(); i++ {
-		columnsAddresses[i] = modelAddresses.Field(i).Addr().Interface()
-	}
-
-	checkError(rows.Scan(columnsAddresses...))
+	return todos, db.Error
 }
 
 func createDbTodo(dto todo.TodoDto) error {
-	sqlQuery := "INSERT INTO todos VALUES (gen_random_uuid (), " + "'" + dto.Title + "'" + ", false, NOW());"
-	return executreDbQuery(sqlQuery)
+	id := uuid.New().String()
+	db.Create(&todo.TodoModel{ID: id, Title: dto.Title})
+	checkError(db.Error)
+
+	return db.Error
 }
 
 func deleteDbTodo(id string) error {
-	sqlQuery := "DELETE FROM todos WHERE ID = " + "'" + id + "'" + ";"
-	return executreDbQuery(sqlQuery)
+	var todoUnique []todo.TodoModel
+	db.First(&todoUnique, "id = ?", id)
+	db.Delete(&todoUnique, "id = ?", id)
+	checkError(db.Error)
+
+	return db.Error
 }
 
 func updateDbTodo(dto todo.TodoDto) error {
-	sqlQuery := "UPDATE todos SET Title = " +
-		"'" + dto.Title + "'" +
-		", Completed = " +
-		toString(dto.Completed) +
-		" WHERE ID = " +
-		"'" + dto.ID + "'" + ";"
-	print(sqlQuery)
-	return executreDbQuery(sqlQuery)
-}
+	var todoUnique []todo.TodoModel
+	db.First(&todoUnique, "id = ?", dto.ID)
+	db.Model(&todoUnique).Updates(todo.TodoModel{Title: dto.Title, Completed: dto.Completed})
+	checkError(db.Error)
 
-func executreDbQuery(sqlQuery string) error {
-	_, err := db.Exec(sqlQuery)
-	checkError(err)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func toString(bool bool) string {
-	if bool {
-		return "true"
-	} else {
-		return "false"
-	}
+	return db.Error
 }

@@ -1,5 +1,5 @@
 # Prerequisite
-create a postgres db, change credentials in env.go, create the table defined in createTables.sql and insert sample data
+create a postgres db, change credentials in env.go
 
 # launch project
 go run .
