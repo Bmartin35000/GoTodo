@@ -11,6 +11,7 @@ func init() {
 	setEnvVariableIfNotExist("db_address", "localhost")
 	setEnvVariableIfNotExist("db_port", "55555")
 	setEnvVariableIfNotExist("db_name", "postgres")
+	setEnvVariableIfNotExist("environment", "development")
 	initDatabase() // force init orders due to strong connection
 }
 

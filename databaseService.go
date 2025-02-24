@@ -1,12 +1,16 @@
 package main
 
 import (
-	"fmt"
+	"os"
+
+	"reflect"
+
 	"github.com/Bmartin35000/backend-project/todo"
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"os"
+	"gorm.io/gorm/logger"
 )
 
 var db *gorm.DB
@@ -14,14 +18,17 @@ var db *gorm.DB
 func initDatabase() {
 	dataSourceName := "host=" + os.Getenv("db_address") + " user=" + os.Getenv("db_user") + " password=" + os.Getenv("db_password") +
 		" dbname=" + os.Getenv("db_name") + " port=" + os.Getenv("db_port") + " sslmode=disable"
-	fmt.Println("Connecting to db : ", dataSourceName)
 
 	var err error
 	// Connect to database
-	db, err = gorm.Open(postgres.Open(dataSourceName), &gorm.Config{})
+	db, err = gorm.Open(postgres.Open(dataSourceName), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent), // disable default logs
+	})
 	if err != nil {
+		log.WithFields(log.Fields{"dsn": dataSourceName}).Panic("Connection to db failed")
 		panic("failed to connect database")
 	}
+	log.WithFields(log.Fields{"dsn": dataSourceName}).Info("Connection to db successful")
 
 	// Update the db table
 	db.AutoMigrate(&todo.TodoModel{})
@@ -30,8 +37,11 @@ func initDatabase() {
 func getDbTodos() ([]todo.TodoModel, error) {
 	var todos []todo.TodoModel
 	db.Find(&todos)
-	checkError(db.Error)
-	fmt.Println("len todos : ", len(todos))
+	if db.Error != nil {
+		log.WithFields(log.Fields{"type": reflect.TypeOf(todos), "details": db.Error}).Error("Get failed")
+	} else {
+		log.WithFields(log.Fields{"type": reflect.TypeOf(todos), "length": len(todos)}).Info("Get successful")
+	}
 
 	return todos, db.Error
 }
@@ -39,25 +49,35 @@ func getDbTodos() ([]todo.TodoModel, error) {
 func createDbTodo(dto todo.TodoDto) error {
 	id := uuid.New().String()
 	db.Create(&todo.TodoModel{ID: id, Title: dto.Title})
-	checkError(db.Error)
+	if db.Error != nil {
+		log.WithFields(log.Fields{"type": reflect.TypeOf(dto), "dto": dto, "details": db.Error}).Error("Create failed")
+	} else {
+		log.WithFields(log.Fields{"type": reflect.TypeOf(dto), "dto": dto}).Info("Create successful")
+	}
 
 	return db.Error
 }
 
 func deleteDbTodo(id string) error {
-	var todoUnique []todo.TodoModel
-	db.First(&todoUnique, "id = ?", id)
+	var todoUnique todo.TodoModel
 	db.Delete(&todoUnique, "id = ?", id)
-	checkError(db.Error)
+	if db.Error != nil {
+		log.WithFields(log.Fields{"type": reflect.TypeOf(todoUnique), "id": id, "details": db.Error}).Error("Delete failed")
+	} else {
+		log.WithFields(log.Fields{"type": reflect.TypeOf(todoUnique), "id": id}).Info("Delete successful")
+	}
 
 	return db.Error
 }
 
 func updateDbTodo(dto todo.TodoDto) error {
-	var todoUnique []todo.TodoModel
-	db.First(&todoUnique, "id = ?", dto.ID)
+	var todoUnique todo.TodoModel
 	db.Model(&todoUnique).Updates(todo.TodoModel{Title: dto.Title, Completed: dto.Completed})
-	checkError(db.Error)
+	if db.Error != nil {
+		log.WithFields(log.Fields{"type": reflect.TypeOf(todoUnique), "dto": dto, "details": db.Error}).Error("Update failed")
+	} else {
+		log.WithFields(log.Fields{"type": reflect.TypeOf(todoUnique), "dto": dto}).Info("Update successful")
+	}
 
 	return db.Error
 }

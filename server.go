@@ -2,19 +2,19 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/Bmartin35000/backend-project/todo"
-	"github.com/go-chi/cors"
-	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/Bmartin35000/backend-project/todo"
+	"github.com/go-chi/cors"
+
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 
 	_ "github.com/lib/pq"
+	log "github.com/sirupsen/logrus"
 	"github.com/thedevsaddam/renderer"
 )
 
@@ -41,14 +41,25 @@ func main() {
 	}
 
 	// start the server
-	fmt.Println("Server started on port", os.Getenv("server.port"))
+	log.WithFields(log.Fields{"port": os.Getenv("server.port")}).Info("Server starting")
 	if err := server.ListenAndServe(); err != nil {
-		log.Printf("listen:%s\n", err)
-
+		log.WithFields(log.Fields{"port": os.Getenv("server.port"), "details": err}).Panic("failed to launch server")
+		panic("failed to launch server")
 	}
 }
 
 func init() {
+	// Setting the log's level depending on environment
+	env := os.Getenv("environment")
+	switch env {
+	case "development":
+		log.SetLevel(log.InfoLevel)
+	case "production":
+		log.SetLevel(log.ErrorLevel)
+	default:
+		log.SetLevel(log.InfoLevel)
+	}
+
 	rnd = renderer.New()
 }
 
@@ -64,11 +75,10 @@ func todoHandlers() http.Handler {
 }
 
 func getTodos(response http.ResponseWriter, _ *http.Request) {
-	fmt.Println("get todos")
+	log.Info("Request receive to get Todos")
 
 	todoModels, err := getDbTodos()
 	if err != nil {
-		log.Printf("failed to get todos : %v\n", err.Error())
 		rnd.JSON(response, http.StatusBadRequest, renderer.M{
 			"message": "Could not get the todos",
 			"error":   err.Error(),
@@ -83,11 +93,11 @@ func getTodos(response http.ResponseWriter, _ *http.Request) {
 }
 
 func createTodo(response http.ResponseWriter, request *http.Request) {
-	fmt.Println("create todo")
+	log.WithFields(log.Fields{"body": request.Body}).Info("Request receive to create Todo")
 
 	todoDto := todo.TodoDto{}
 	if err := json.NewDecoder(request.Body).Decode(&todoDto); err != nil {
-		log.Printf("failed to decode json data: %v\n", err.Error())
+		log.WithFields(log.Fields{"details": err.Error()}).Error("failed to decode json data")
 		rnd.JSON(response, http.StatusBadRequest, renderer.M{
 			"message": "could not decode data",
 		})
@@ -95,7 +105,7 @@ func createTodo(response http.ResponseWriter, request *http.Request) {
 	}
 
 	if todoDto.Title == "" {
-		log.Println("no title added to response body")
+		log.Error("no title added to request body")
 		rnd.JSON(response, http.StatusBadRequest, renderer.M{
 			"message": "please add a title",
 		})
@@ -104,7 +114,6 @@ func createTodo(response http.ResponseWriter, request *http.Request) {
 
 	err := createDbTodo(todoDto)
 	if err != nil {
-		log.Printf("failed to create todo : %v\n", err.Error())
 		rnd.JSON(response, http.StatusBadRequest, renderer.M{
 			"message": "Could not create the todo",
 			"error":   err.Error(),
@@ -117,12 +126,12 @@ func createTodo(response http.ResponseWriter, request *http.Request) {
 }
 
 func deleteTodo(response http.ResponseWriter, request *http.Request) {
-	fmt.Println("delete todo")
-
 	todoId := strings.TrimSpace(chi.URLParam(request, "id"))
 
+	log.WithFields(log.Fields{"id": todoId}).Info("Request receive to delete Todo")
+
 	if todoId == "" {
-		log.Println("no id added to response body")
+		log.Error("no id added to request body")
 		rnd.JSON(response, http.StatusBadRequest, renderer.M{
 			"message": "please add an id",
 		})
@@ -131,7 +140,6 @@ func deleteTodo(response http.ResponseWriter, request *http.Request) {
 
 	err := deleteDbTodo(todoId)
 	if err != nil {
-		log.Printf("failed to delete todo : %v\n", err.Error())
 		rnd.JSON(response, http.StatusBadRequest, renderer.M{
 			"message": "Could not delete the todo",
 			"error":   err.Error(),
@@ -142,12 +150,13 @@ func deleteTodo(response http.ResponseWriter, request *http.Request) {
 		Message: "Todo deleted",
 	})
 }
+
 func updateTodo(response http.ResponseWriter, request *http.Request) {
-	fmt.Println("update todo")
+	log.WithFields(log.Fields{"body": request.Body}).Info("Request receive to update Todo")
 
 	var todoDto todo.TodoDto
 	if err := json.NewDecoder(request.Body).Decode(&todoDto); err != nil {
-		log.Printf("failed to decode json data: %v\n", err.Error())
+		log.WithFields(log.Fields{"details": err.Error()}).Error("failed to decode json data")
 		rnd.JSON(response, http.StatusBadRequest, renderer.M{
 			"message": "could not decode data",
 		})
@@ -155,7 +164,7 @@ func updateTodo(response http.ResponseWriter, request *http.Request) {
 	}
 
 	if todoDto.Title == "" {
-		log.Println("no title added to response body")
+		log.Error("no title added to response body")
 		rnd.JSON(response, http.StatusBadRequest, renderer.M{
 			"message": "please add a title",
 		})
@@ -164,7 +173,6 @@ func updateTodo(response http.ResponseWriter, request *http.Request) {
 
 	err := updateDbTodo(todoDto)
 	if err != nil {
-		log.Printf("failed to update todo : %v\n", err.Error())
 		rnd.JSON(response, http.StatusBadRequest, renderer.M{
 			"message": "Could not update the todo",
 			"error":   err.Error(),
