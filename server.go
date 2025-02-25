@@ -4,14 +4,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Bmartin35000/backend-project/todo"
 	"github.com/go-chi/cors"
 
-	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
+
+	"sync"
 
 	_ "github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
@@ -30,7 +32,6 @@ func main() {
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
-	router.Use(middleware.Logger)
 	router.Mount("/", todoHandlers())
 
 	server := &http.Server{
@@ -70,6 +71,7 @@ func todoHandlers() http.Handler {
 		r.Post("/todo", createTodo)
 		r.Put("/todo", updateTodo)
 		r.Delete("/todo/{id}", deleteTodo)
+		r.Get("/fakeTask", fakeTask)
 	})
 	return router
 }
@@ -182,4 +184,25 @@ func updateTodo(response http.ResponseWriter, request *http.Request) {
 	rnd.JSON(response, http.StatusOK, todo.Response{
 		Message: "Todo updated",
 	})
+}
+
+// Fake task to exercise with goroutines
+func fakeTask(response http.ResponseWriter, _ *http.Request) {
+	log.Info("Request receive to do a fake task")
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go ExecuteFakeTask(&wg)
+	channel := make(chan any, 1) // buffer channel due to waitgroup
+	go ExecuteFakeTaskWithReturn(&wg, channel)
+	wg.Wait()
+
+	res := <-channel
+	switch res := res.(type) { // verify type
+	case int:
+		rnd.JSON(response, http.StatusOK, "fake task returned the res : "+strconv.Itoa(res))
+	default:
+		err := res.(error) // type assertion
+		rnd.JSON(response, http.StatusBadRequest, "fake task returned the error : "+string(err.Error()))
+	}
 }
