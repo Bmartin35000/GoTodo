@@ -1,9 +1,9 @@
 server:
-  port: 8080
+  port: 80
   environment: development
 db:
   user: postgres
   password: postgres
-  address: localhost
-  port: 71
+  address: host.docker.internal
+  port: 55555
   name: postgres

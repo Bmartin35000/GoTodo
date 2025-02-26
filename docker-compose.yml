@@ -18,9 +18,7 @@ services:
     ports:
       - 8080:80
     environment:
-      db_address: host.docker.internal
-      db_port: 55555
-      db_name: postgres
+      source: docker
   todoAppFrontEnd:
     container_name: vue-todo
     restart: always

@@ -1,14 +1,20 @@
 package config
 
 import (
+	"os"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
-func LoadConfig() (config Config) { //TODO handle docker launch --> see viper.AutomaticEnv()
+func LoadConfig() (config Config) {
 	viper.AddConfigPath("config")
 	viper.SetConfigType("yaml")
-	viper.SetConfigName("config")
+	if os.Getenv("source") == "docker" {
+		viper.SetConfigName("config.docker")
+	} else {
+		viper.SetConfigName("config")
+	}
 	err := viper.ReadInConfig()
 	if err != nil {
 		log.WithFields(log.Fields{"details": err}).Panic("failed to load env file")

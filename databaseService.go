@@ -24,13 +24,17 @@ func initDatabase() {
 		Logger: logger.Default.LogMode(logger.Silent), // disable default logs
 	})
 	if err != nil {
-		log.WithFields(log.Fields{"dsn": dataSourceName}).Panic("Connection to db failed")
+		log.WithFields(log.Fields{"dsn": dataSourceName, "details": err.Error()}).Panic("Connection to db failed")
 		panic("failed to connect database")
 	}
 	log.WithFields(log.Fields{"dsn": dataSourceName}).Info("Connection to db successful")
 
 	// Update the db table
-	db.AutoMigrate(&todo.TodoModel{})
+	err = db.AutoMigrate(&todo.TodoModel{})
+	if err != nil && err.Error() != "simple protocol queries must be run with client_encoding=UTF8" { // ignore one specific error that is not blocking
+		log.WithFields(log.Fields{"details": err.Error()}).Panic("Failed to update db schema")
+		panic("failed to update db schema")
+	}
 }
 
 func getDbTodos() ([]todo.TodoModel, error) {
