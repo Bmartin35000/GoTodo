@@ -1,9 +1,8 @@
 package main
 
 import (
-	"os"
-
 	"reflect"
+	"strconv"
 
 	"github.com/Bmartin35000/backend-project/todo"
 	"github.com/google/uuid"
@@ -16,8 +15,8 @@ import (
 var db *gorm.DB
 
 func initDatabase() {
-	dataSourceName := "host=" + os.Getenv("db_address") + " user=" + os.Getenv("db_user") + " password=" + os.Getenv("db_password") +
-		" dbname=" + os.Getenv("db_name") + " port=" + os.Getenv("db_port") + " sslmode=disable"
+	dataSourceName := "host=" + conf.Db.Address + " user=" + conf.Db.User + " password=" + conf.Db.Password +
+		" dbname=" + conf.Db.Name + " port=" + strconv.Itoa(conf.Db.Port) + " sslmode=disable"
 
 	var err error
 	// Connect to database
@@ -72,7 +71,7 @@ func deleteDbTodo(id string) error {
 
 func updateDbTodo(dto todo.TodoDto) error {
 	var todoUnique todo.TodoModel
-	db.Model(&todoUnique).Updates(todo.TodoModel{Title: dto.Title, Completed: dto.Completed})
+	db.Model(&todoUnique).Where("id = ?", dto.ID).Updates(todo.TodoModel{Title: dto.Title, Completed: dto.Completed})
 	if db.Error != nil {
 		log.WithFields(log.Fields{"type": reflect.TypeOf(todoUnique), "dto": dto, "details": db.Error}).Error("Update failed")
 	} else {

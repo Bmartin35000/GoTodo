@@ -1,0 +1,9 @@
+server:
+  port: 80
+  environment: development
+db:
+  user: postgres
+  password: postgres
+  address: localhost
+  port: 55555
+  name: postgres

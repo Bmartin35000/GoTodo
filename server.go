@@ -3,11 +3,12 @@ package main
 import (
 	"encoding/json"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/Bmartin35000/backend-project/config"
+	"github.com/Bmartin35000/backend-project/fake"
 	"github.com/Bmartin35000/backend-project/todo"
 	"github.com/go-chi/cors"
 
@@ -21,6 +22,7 @@ import (
 )
 
 var rnd *renderer.Render
+var conf config.Config
 
 func main() {
 	router := chi.NewRouter()
@@ -35,24 +37,24 @@ func main() {
 	router.Mount("/", todoHandlers())
 
 	server := &http.Server{
-		Addr:         ":" + os.Getenv("server.port"),
+		Addr:         ":" + strconv.Itoa(conf.Server.Port),
 		Handler:      router,
 		ReadTimeout:  60 * time.Second,
 		WriteTimeout: 60 * time.Second,
 	}
 
 	// start the server
-	log.WithFields(log.Fields{"port": os.Getenv("server.port")}).Info("Server starting")
+	log.WithFields(log.Fields{"port": strconv.Itoa(conf.Server.Port)}).Info("Server starting")
 	if err := server.ListenAndServe(); err != nil {
-		log.WithFields(log.Fields{"port": os.Getenv("server.port"), "details": err}).Panic("failed to launch server")
+		log.WithFields(log.Fields{"port": strconv.Itoa(conf.Server.Port), "details": err}).Panic("failed to launch server")
 		panic("failed to launch server")
 	}
 }
 
 func init() {
 	// Setting the log's level depending on environment
-	env := os.Getenv("environment")
-	switch env {
+	conf = config.LoadConfig()
+	switch conf.Server.Environment {
 	case "development":
 		log.SetLevel(log.InfoLevel)
 	case "production":
@@ -62,6 +64,8 @@ func init() {
 	}
 
 	rnd = renderer.New()
+
+	initDatabase()
 }
 
 func todoHandlers() http.Handler {
@@ -71,7 +75,8 @@ func todoHandlers() http.Handler {
 		r.Post("/todo", createTodo)
 		r.Put("/todo", updateTodo)
 		r.Delete("/todo/{id}", deleteTodo)
-		r.Get("/fakeTask", fakeTask)
+		r.Get("/fakeTaskGoRoutines", fakeTaskGoRoutines)
+		r.Get("/fakeTaskMutex", fakeTaskMutex)
 	})
 	return router
 }
@@ -187,14 +192,14 @@ func updateTodo(response http.ResponseWriter, request *http.Request) {
 }
 
 // Fake task to exercise with goroutines
-func fakeTask(response http.ResponseWriter, _ *http.Request) {
+func fakeTaskGoRoutines(response http.ResponseWriter, _ *http.Request) {
 	log.Info("Request receive to do a fake task")
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go ExecuteFakeTask(&wg)
+	go fake.ExecuteFakeTask(&wg)
 	channel := make(chan any, 1) // buffer channel due to waitgroup
-	go ExecuteFakeTaskWithReturn(&wg, channel)
+	go fake.ExecuteFakeTaskWithReturn(&wg, channel)
 	wg.Wait()
 
 	res := <-channel
@@ -205,4 +210,24 @@ func fakeTask(response http.ResponseWriter, _ *http.Request) {
 		err := res.(error) // type assertion
 		rnd.JSON(response, http.StatusBadRequest, "fake task returned the error : "+string(err.Error()))
 	}
+}
+
+// Fake task to exercise with mutex
+func fakeTaskMutex(response http.ResponseWriter, _ *http.Request) {
+	log.Info("Request receive to do a fake task")
+
+	fakeObject := fake.FakeObj{}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func(*sync.WaitGroup) {
+		defer wg.Done()
+		fakeObject.SetVal(42)
+	}(&wg)
+	go func(*sync.WaitGroup) {
+		defer wg.Done()
+		fakeObject.SetVal(13)
+	}(&wg)
+	wg.Wait()
+	rnd.JSON(response, http.StatusOK, "Value has been set once and for all to : "+strconv.Itoa(fakeObject.GetVal()))
 }
